@@ -13,7 +13,7 @@ The system captures handwritten text through a camera, processes the image, dete
 - To reduce manual data entry.
 - To demonstrate the application of OCR and image processing.
 
----
+
 
 ## 🛠️ Technologies & Tools Used
 - Python  
