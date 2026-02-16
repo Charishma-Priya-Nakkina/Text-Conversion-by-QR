@@ -1,0 +1,23 @@
+
+import cv2
+import easyocr
+import qrcode
+from PIL import Image
+# Step 1: Load the image with handwritten text
+image_path = ’text.jpg’ # Replace with your image path
+image = cv2.imread(image_path)
+# Step 2: Use EasyOCR to extract text
+reader = easyocr.Reader([’en’]) # Language = English
+results = reader.readtext(image)
+# Step 3: Concatenate all detected text
+extracted_text = " ".join([res[1] for res in results])
+print("Extracted Text:", extracted_text)
+# Step 4: Generate QR Code from the extracted text
+qr = qrcode.QRCode(version=1, box_size=10, border=5)
+qr.add_data(extracted_text)
+qr.make(fit=True)
+qr_img = qr.make_image(fill_color="black", back_color="white")
+qr_img_path = ’output_qr.png’
+qr_img.save(qr_img_path)
+# Step 5: Show the QR Code
+qr_img.show()

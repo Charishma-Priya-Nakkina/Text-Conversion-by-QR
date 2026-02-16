@@ -1,0 +1,90 @@
+import cv2
+import easyocr
+import qrcode
+from PIL import Image
+from pyzbar.pyzbar import decode
+import numpy as np
+from cryptography.fernet import Fernet
+def encrypt_text(text):
+with open("secret.key", "rb") as key_file:
+key = key_file.read()
+#with open("save.txt", "wb") as key_f:
+# key_f.write(text)
+fernet = Fernet(key)
+encrypted = fernet.encrypt(text.encode())
+return encrypted.decode() # QR code requires a string
+def decrypt_text(encrypted_text):
+with open("secret.key", "rb") as key_file:
+key = key_file.read()
+fernet = Fernet(key)
+decrypted = fernet.decrypt(encrypted_text.encode())
+return decrypted.decode()
+def imgtotexttoqr():
+# Generate a key and save it securely (do this only once)
+key = Fernet.generate_key()
+with open("secret.key", "wb") as key_file:
+key_file.write(key)
+# Step 1: Load the image with handwritten text
+image_path = ’text.jpg’ # Replace with your image path
+image = cv2.imread(image_path)
+# Step 2: Use EasyOCR to extract text
+reader = easyocr.Reader([’en’]) # Language = English
+results = reader.readtext(image)
+# Step 3: Concatenate all detected text
+extracted_text = " ".join([res[1] for res in results])
+encrypted_text = encrypt_text(extracted_text)
+print("Encrypted Text for QR Code:", encrypted_text)
+# Step 4: Generate QR Code from the extracted text
+qr = qrcode.QRCode(version=1, box_size=10, border=5)
+qr.add_data(encrypted_text)
+qr.make(fit=True)
+qr_img = qr.make_image(fill_color="black", back_color="white")
+qr_img_path = ’output_qr.png’
+qr_img.save(qr_img_path)
+# Step 5: Show the QR Code
+qr_img.show()
+def qrdetectioncam():
+# Initialize ESP32-CAM stream
+url = ’http://192.168.114.154:81/stream’
+cap = cv2.VideoCapture(url)
+while True:
+ret, frame = cap.read()
+if not ret:
+break
+# Decode QR codes from the frame
+decoded_objects = decode(frame)
+for obj in decoded_objects:
+# Draw rectangle around QR code
+points = obj.polygon
+if len(points) == 4:
+pts = [(point.x, point.y) for point in points]
+cv2.polylines(frame, [np.array(pts, dtype=np.int32)], True, (0, 255, 0), 3)
+# Decode and decrypt QR code text
+qr_text = obj.data.decode(’utf-8’)
+try:
+decrypted_text = decrypt_text(qr_text)
+except Exception as e:
+print("Error decrypting QR code:", e)
+x = input("Enter code: ")
+if (x == qr_text):
+print("Decrypted QR Code Text:", decrypted_text)
+# Display the frame
+cv2.imshow(’QR Code Scanner’, frame)
+# Exit on ’q’ key press
+if cv2.waitKey(1) & 0xFF == ord(’q’):
+break
+cap.release()
+cv2.destroyAllWindows()
+# Menu
+while True:
+print("\n1. QRCode detection with ESP32-CAM (Wi-Fi required)")
+print("2. Extract data from text.jpg and convert to QRCode")
+x = int(input("Enter 1/2/0 (0 for quit): "))
+if x == 1:
+qrdetectioncam()
+elif x == 2:
+imgtotexttoqr()
+elif x == 0:
+break
+else:
+print("Enter either 1 or 2")
